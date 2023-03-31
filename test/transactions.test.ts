@@ -1,6 +1,7 @@
-import { it, beforeAll, afterAll, describe, expect, beforeEach } from 'vitest';
-import { execSync } from 'child_process';
 import { app } from '../src/app';
+import { execSync } from 'child_process';
+import { prisma } from '../src/lib/prisma';
+import { it, beforeAll, afterAll, describe, expect, beforeEach } from 'vitest';
 
 describe('Diets Routes', () => {
     beforeAll(async () => {
@@ -17,7 +18,16 @@ describe('Diets Routes', () => {
     });
     
     it('Deve ser possível criar um usuário', async () => {
-        
+        const user = await prisma.user.create({
+            data: {
+                name: 'John Doe',
+                description: 'dieta do café',
+                date_diet: new Date(),
+                current_state: true,
+            },
+        });
+
+        expect(user.id).toEqual(expect.any(String));
     });
 
     it('Deve ser possível identificar o usuário entre as requisições', async () => {

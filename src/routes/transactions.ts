@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { randomUUID } from "crypto";
-import { dbCase } from "../database"; // here i did any changes
+import { knex } from "../database";
 import { z } from "zod";
 
 import { checkSessionId } from "../middlewares/check-session-id";
@@ -15,7 +15,7 @@ export async function transactionsRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         const { sessionId } = request.cookies;
 
-        const transactions = await dbCase('transactions')
+        const transactions = await knex('transactions')
             .where('session_id', sessionId)
             .select();
 
@@ -33,7 +33,7 @@ export async function transactionsRoutes(app: FastifyInstance) {
 
         const { sessionId } = request.cookies;
 
-        const transaction = await dbCase('transactions')
+        const transaction = await knex('transactions')
             .where({
                 session_id: sessionId,
                 id,
@@ -48,9 +48,9 @@ export async function transactionsRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         const { sessionId } = request.cookies;
 
-        const summary = await dbCase('transactions')
+        const summary = await knex('transactions')
             .where('session_id', sessionId)
-            .sum('amount', { as: 'amount' })
+            .sum('date_diet', { as: 'dateDiet' })
             .first();
 
         return { summary };
@@ -58,12 +58,12 @@ export async function transactionsRoutes(app: FastifyInstance) {
 
     app.post('/', async (request, reply) => {
         const createTransaction = z.object({
-            title: z.string(),
-            amount: z.number(),
-            type: z.enum(['credit', 'debit']),
+            username: z.string(),
+            date_diet: z.string(),
+            state_daily: z.boolean()
         });
 
-        const { title, amount, type } = createTransaction.parse(request.body);
+        const { username, date_diet, state_daily } = createTransaction.parse(request.body);
 
         let sessionId = request.cookies.sessionId;
 
@@ -76,10 +76,10 @@ export async function transactionsRoutes(app: FastifyInstance) {
             });
         }
 
-        await dbCase('transactions').insert({
+        await knex('transactions').insert({
             id: randomUUID(),
-            title,
-            amount: type === 'credit' ? amount : amount * -1,
+            username: 'Carlos Souza',
+            state_daily: true,
             session_id: sessionId
         });
 
