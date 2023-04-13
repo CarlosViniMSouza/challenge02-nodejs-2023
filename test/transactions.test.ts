@@ -1,9 +1,9 @@
-import { app } from '../src/app';
-import { execSync } from 'child_process';
-import { prisma } from '../src/lib/prisma';
 import { it, beforeAll, afterAll, describe, expect, beforeEach } from 'vitest';
+import { execSync } from 'child_process';
+import { app } from '../src/app';
+import request from 'supertest';
 
-describe('Diets Routes', () => {
+describe('Transactions Routes', () => {
     beforeAll(async () => {
         await app.ready();
     });
@@ -13,62 +13,103 @@ describe('Diets Routes', () => {
     });
 
     beforeEach(() => {
-        execSync('npm run prisma migrate:rollback --all');
-        execSync('npm run prisma migrate:latest');
+        execSync('npm run knex migrate:rollback --all');
+        execSync('npm run knex migrate:latest');
     });
     
-    it('Deve ser possível criar um usuário', async () => {
-        const user = await prisma.user.create({
-            data: {
-                name: 'John Doe',
-                description: 'dieta do café',
-                date_diet: new Date(),
-                current_state: true,
-            },
+    it('User should be able to create a new transaction', async () => {
+        await request(app.server)
+            .post('/transactions')
+            .send({
+                title: 'New transaction',
+                amount: 1200,
+                type: 'credit',
+            })
+            .expect(201);
+    });
+
+    it('User should be able to list all transactions', async () => {
+        const createTransaction = await request(app.server)
+            .post('/transactions')
+            .send({
+                title: 'New transaction',
+                amount: 1200,
+                type: 'credit',
+            });
+
+        const cookies = createTransaction.get('Set-Cookie');
+
+        const summaryResponse = await request(app.server)
+            .get('/transactions')
+            .set('Cookie', cookies)
+            .expect(200);
+
+        expect(summaryResponse.body.transactions).toEqual([
+            expect.objectContaining({
+                title: 'New transaction',
+                amount: 1200,
+            }),
+        ]);
+    });
+
+    it('User should be able to get a specific transaction', async () => {
+        const createTransaction = await request(app.server)
+            .post('/transactions')
+            .send({
+                title: 'New transaction',
+                amount: 1200,
+                type: 'credit',
+            });
+
+        const cookies = createTransaction.get('Set-Cookie');
+
+        const summaryResponse = await request(app.server)
+            .get('/transactions')
+            .set('Cookie', cookies)
+            .expect(200);
+
+        const transactionId = summaryResponse.body.transactions[0].id;
+
+        const getTransaction = await request(app.server)
+            .get(`/transactions/${transactionId}`)
+            .set('Cookie', cookies)
+            .expect(200);
+
+        expect(getTransaction.body.transaction).toEqual(
+            expect.objectContaining({
+                title: 'New transaction',
+                amount: 1200,
+            }),
+        );
+    });
+
+    it('User should be able to get the summary', async () => {
+        const createTransaction = await request(app.server)
+            .post('/transactions')
+            .send({
+                title: 'New transaction (Credit)',
+                amount: 1200,
+                type: 'credit',
+            });
+
+        const cookies = createTransaction.get('Set-Cookie');
+
+        await request(app.server)
+            .post('/transactions')
+            .set('Cookie', cookies)
+            .send({
+                title: 'New transaction (Debit)',
+                amount: 100,
+                type: 'debit',
+            });
+
+        const summaryResponse = await request(app.server)
+            .get('/transactions/summary')
+            .set('Cookie', cookies)
+            .expect(200);
+
+        expect(summaryResponse.body.summary).toEqual({
+            amount: 1100,
         });
-
-        expect(user.id).toEqual(expect.any(String));
-    });
-
-    it('Deve ser possível identificar o usuário entre as requisições', async () => {
-        
-    });
-
-    it('Deve ser possível registrar uma refeição feita, com as seguintes informações', async () => {
-        /*
-            - Nome
-            - Descrição
-            - Data e Hora
-            - Está dentro ou não da dieta
-        */
-    });
-
-    it('Deve ser possível editar uma refeição, podendo alterar todos os dados acima', async () => {
-        
-    });
-
-    it('Deve ser possível apagar uma refeição', async () => {
-        
-    });
-
-    it('Deve ser possível listar todas as refeições de um usuário', async () => {
-        
-    });
-
-    it('Deve ser possível visualizar uma única refeição', async () => {
-        
-    });
-
-    it('Deve ser possível recuperar as métricas de um usuário', async () => {
-        /*
-            - Quant. Total: refeições registradas
-            - Quant. Total: refeições dentro da dieta
-            - Quant. Total: refeições fora da dieta
-            - Melhor sequência por dia de refeições dentro da dieta
-        */
-    });
-
-    it('O usuário só pode visualizar, editar e apagar as refeições o qual ele criou', async () => {
-        
     });
 });

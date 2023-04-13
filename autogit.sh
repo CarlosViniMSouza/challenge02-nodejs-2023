@@ -1,4 +1,4 @@
 git add -A
-git commit -m "Refazendo repositorio"
+git commit -m "desafio -> concluido"
 git push -u origin main
 git status
